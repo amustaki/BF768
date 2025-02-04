@@ -1,0 +1,212 @@
+<html style= "background-color:#E9FABF;">
+	<head>
+		<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script src='https://www.gstatic.com/charts/loader.js'>
+                        google.charts.load('current', {'packages':['corechart']});
+                        google.charts.setOnLoadCallback(drawChart);
+        </script>
+    </head>
+<style>
+
+      * {
+      box-sizing: border-box;
+      }
+    
+      body {
+      font: 20px Arial;
+      }
+
+      input {
+      border: 1px solid transparent;
+      background-color: #f1f1f1; /* slightly gray */
+      padding: 10px;
+      font-size: 20px;
+      }
+     
+      button {
+      background-color: DodgerBlue;
+      color: #fff; /* white; */
+      }
+     
+      select {
+      font-size: 16px;
+      width: 200px;
+      }
+     
+      /* sets styles for a table, table header cell (th), and a table data cell (td) */
+      table, th, td {
+      border: 1px solid black;
+      border-collapse: collapse;
+      padding: 15px;
+      }
+     
+      /* sets width for the entire table */
+      table {
+      width: 400px;
+      }
+     
+      /* sets text alignment for a table header cell */
+      th {
+      text-align: left;
+      }
+     
+      /* sets text alignment for a table data cell */
+      td {
+      text-align: left;
+      }
+     
+      /* overrides default background color for every other table row (tr) */
+      tr:nth-child(even) {
+      background-color: #f2f2f2;
+      }
+	</style>
+    <body>
+    	<h1> BF768 Homework 4 </h1>
+    	<h2> Histogram of Target Scores </h2>
+    	<p> This section will take the name of a miRNA and create a histogram of the target scores from the genes targeted by this miRNA 
+    	<br>
+    	Type in the text box a miRNA and hit the submit button
+    	<br>
+    	miRNA: <input type="text" id="miRNA" placeholder="hsa-miR-3910">
+    	<br>
+    	</p>
+    	<button id="target_button"> Target Scores Histogram </button>
+    	<div id="miRNAhistogram"></div>
+    	
+	<h2> miRNA Sequence Search </h2>
+    	<p>This section will take a miRNA search sequence of 3-8 characters and create a table of the names sequences that contain the search sequence
+    	<br>
+        Input a miRNA sequence in the text box and hit the submit button (ACGU is the alphabet.)
+        <br>
+        miRNA search sequence: <input type="text" id="miRNA_sequence" placeholder="GCAAAA">
+    	<br>
+	</p>
+    	<button id="miRNA_button" >Find miRNAs</button>
+    	<div id="miRNATable"></div>
+    	
+    	
+    	
+    	<script>
+    	$(document).ready(function(){
+                //event is button click
+                $("#miRNA_button").click(function(){
+                        $("#miRNATable").empty
+			//alert("Button worked");
+			let miRNA_sequence = $("#miRNA_sequence").val();
+                        if (miRNA_sequence==""){alert("No sequence inputted.");}
+			else if (miRNA_sequence.length<3 && miRNA_sequence.length>0){alert("Search sequence is too short must be 3-8 characters");}
+			else if (miRNA_sequence.length>8){alert("Search sequence is too long must be 3-8 characters");}
+			//else if (miRNA_sequence != "^[AGCU]*$"){alert("Incorrect RNA sequence characters only use the characters: A,G,C,U);}
+                        else{getSequenceRows();}
+                //AJAX request here
+                });
+                $("#target_button").click(function(){
+			$("#miRNAhistogram").emtpy
+                        let miRNA = $("#miRNA").val();
+                        if (miRNA==""){alert("No miRNA inputted.");}
+                        else{getHistvalues();}
+                //AJAX request here
+                });
+            });
+
+
+                
+        function getSequenceRows(){
+                let miRNA_sequence=$("#miRNA_sequence").val();
+		//if(data.legnth<1)$
+                $.get("https://bioed.bu.edu/cgi-bin/students_22/amustaki/amustaki_AJAX.py",
+                {selector:"miRNA_seq",miRNA_sequence:miRNA_sequence}, 
+                function(data){
+			$("#miRNATable").empty();
+			if(data==""){$("#miRNATable").append("Error there are no matching miRNa sequences with search RNA sequence");}
+			
+                	else{format_sequence_table(data);}
+			
+                    },
+                    "json"
+                    );
+                }
+
+
+        function format_sequence_table(data){
+                        let miRNA_sequence=$("#miRNA_sequence").val();
+                        $("#miRNATable").empty();	
+                        $("#miRNATable").append("<h3>Sequence Sharing miRNAs</h3>");
+                        
+                        let table_body_contents = '';
+                        for (let row=0; row<data.length; row++) {
+                                let name =data[row][0];
+                                let seq = data[row][1];
+                                table_body_contents += `<tr><td> ${name}</td><td> ${seq}</td></tr>`;
+                        }
+
+                        //append the names of the target gene and pathway
+                        $("#miRNATable").append(`<br><b>Sequence Name: ${miRNA_sequence}</b><br>`);
+
+                        //format the table
+                         let table_template = `<table><thead><tr><th> miRNA Name </th><th>Sequence</th></tr></thead><tbody>${table_body_contents}</tbody></table>`;
+
+                        //append the table
+                         $("#miRNATable").append(table_template);
+
+ 			}
+ 			
+ 	function getHistvalues(){
+ 		let miRNA=$("#miRNA").val();
+ 		$.get("https://bioed.bu.edu/cgi-bin/students_22/amustaki/amustaki_AJAX.py",
+                {selector:"mi_gene",miRNA:miRNA}, 
+                function(data){
+			$("#miRNAhistogram").empty()
+			if(data==""){$("#miRNAhistogram").append("Error there are no target scores for this search miRNA name");}
+			else{format_hist(data);}
+                    },
+                    "json"
+                    );
+ 		}
+ 			
+ 		function format_hist(chart_data){
+ 			google.charts.load('current', {'packages':['corechart']});
+			google.charts.setOnLoadCallback(function(){
+						drawChart (chart_data);
+						});
+ 		
+ 			}
+ 		
+ 		function drawChart (chart_data) {
+ 			let miRNA=$("#miRNA").val();
+ 			var data = new google.visualization.DataTable();
+ 			data.addColumn('number', 'target score');
+ 			const data_rows=[];
+				for (let row=0; row<chart_data.length; row++){
+					data_rows.push(chart_data[row]);
+				data.addRows(data_rows);
+				}
+				var chart = new google.visualization.Histogram(document.getElementById('miRNAhistogram'));
+				var options = {title: `Histogram of Target Scores for: ${miRNA}`};
+				chart.draw(data, options);
+	}
+
+			
+
+
+        </script>
+
+        </body>
+</html>
+
+	
+			
+	
+                     
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
